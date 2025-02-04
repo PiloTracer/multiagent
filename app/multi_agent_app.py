@@ -1,11 +1,12 @@
 # ./app/multi_agent_app.py
-
 import os
 import pathlib
 
+# Remove the old import from `langchain_community.llms import OpenAI`.
+# Instead, import the updated `OpenAI` class from `langchain_openai`.
+# from langchain_community.llms import OpenAI
 from langchain.agents import initialize_agent, Tool
-from langchain_community.llms import OpenAI
-from langchain_openai import OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings, OpenAI
 from langchain_community.vectorstores import FAISS
 
 def load_vector_store(directory: str, openai_api_key: str):
@@ -32,7 +33,7 @@ if not OPENAI_API_KEY:
 
 vector_store = load_vector_store("./faiss_store", OPENAI_API_KEY)
 
-# Define an LLM
+# Now import `OpenAI` from `langchain_openai` to avoid the deprecation warning.
 llm = OpenAI(openai_api_key=OPENAI_API_KEY, temperature=0)
 
 tools = [
@@ -48,6 +49,9 @@ tools = [
     )
 ]
 
+# The second warning about migrating to LangGraph is just a recommendation.
+# If you are okay with continuing to use agents, you can ignore that warning or
+# consider exploring LangGraph in the future.
 agent = initialize_agent(
     tools=tools,
     llm=llm,
