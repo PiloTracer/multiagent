@@ -1,5 +1,5 @@
 // ./multi/app/page.tsx
-"use client"; // Ensure this is at the top for client-side rendering in Next.js 13+
+"use client";
 
 import { useState } from "react";
 
@@ -41,8 +41,8 @@ export default function Home() {
       <h1 className="text-2xl font-bold mb-4">AI Query Interface</h1>
       <input
         type="text"
-        className="border p-2 rounded w-96 text-black" // Added text-black for better readability.
-        placeholder="Ask something about deployments..."
+        className="border p-2 rounded w-96 text-black"
+        placeholder="Ask something about deployments or external reports..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />

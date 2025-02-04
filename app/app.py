@@ -7,13 +7,13 @@ from multi_agent_app import agent
 
 app = FastAPI()
 
-# Add CORS middleware to allow any origin, all methods, and all headers.
+# Add CORS middleware to allow requests from any origin.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows any origin
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all HTTP methods
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 class QueryRequest(BaseModel):

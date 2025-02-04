@@ -1,10 +1,9 @@
 # ./app/multi_agent_app.py
+
 import os
 import pathlib
+import requests
 
-# Remove the old import from `langchain_community.llms import OpenAI`.
-# Instead, import the updated `OpenAI` class from `langchain_openai`.
-# from langchain_community.llms import OpenAI
 from langchain.agents import initialize_agent, Tool
 from langchain_openai import OpenAIEmbeddings, OpenAI
 from langchain_community.vectorstores import FAISS
@@ -27,15 +26,39 @@ def doc_search_tool(query: str) -> str:
 def general_tool(query: str) -> str:
     return f"General tool response: {query}"
 
+def external_report_tool(query: str) -> str:
+    """
+    Sample external API tool:
+    Fetch some dummy JSON, parse it, and return a short 'report'.
+    You can adapt this to your real API calls.
+    """
+    try:
+        # Example external API - JSONPlaceholder
+        # This fetches a dummy to-do item
+        resp = requests.get("https://jsonplaceholder.typicode.com/todos/1")
+        resp.raise_for_status()
+        data = resp.json()
+        # Build a short 'report'
+        return (
+            f"External Report:\n"
+            f"Fetched ID: {data.get('id')}\n"
+            f"Title: {data.get('title')}\n"
+            f"Completed: {data.get('completed')}\n"
+        )
+    except Exception as e:
+        return f"Error fetching external report: {str(e)}"
+
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     raise ValueError("No OPENAI_API_KEY in env")
 
+# Load FAISS index
 vector_store = load_vector_store("./faiss_store", OPENAI_API_KEY)
 
-# Now import `OpenAI` from `langchain_openai` to avoid the deprecation warning.
+# Define the LLM
 llm = OpenAI(openai_api_key=OPENAI_API_KEY, temperature=0)
 
+# Define Tools (including our new external report tool)
 tools = [
     Tool(
         name="DocSearch",
@@ -46,12 +69,18 @@ tools = [
         name="GeneralTool",
         func=general_tool,
         description="General queries unrelated to docs"
-    )
+    ),
+    Tool(
+        name="ExternalReportTool",
+        func=external_report_tool,
+        description=(
+            "Use this tool whenever the user requests an external or new report, "
+            "especially if they mention 'fetch an external report' or 'API'. "
+            "This tool returns JSON-based data from an external source."
+        )
+    ),
 ]
 
-# The second warning about migrating to LangGraph is just a recommendation.
-# If you are okay with continuing to use agents, you can ignore that warning or
-# consider exploring LangGraph in the future.
 agent = initialize_agent(
     tools=tools,
     llm=llm,
@@ -61,6 +90,6 @@ agent = initialize_agent(
 
 if __name__ == "__main__":
     # Test
-    q = "What do the docs say about deployment?"
+    q = "Give me a new external report about something"
     ans = agent.run(q)
     print("Agent says:", ans)
