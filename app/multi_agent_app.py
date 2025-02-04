@@ -44,30 +44,43 @@ def external_report_tool(query: str) -> str:
     except Exception as e:
         return f"Error fetching external report: {str(e)}"
 
-def sentiment_analysis_tool(query: str) -> str:
+def telegram_message_tool(query: str) -> str:
     """
-    Perform sentiment analysis on the input text using Hugging Face's API.
+    Sends a message to a Telegram chat using the Telegram Bot API.
+    The query should contain the message text.
     """
     try:
-        API_URL = "https://api-inference.huggingface.co/models/distilbert-base-uncased-finetuned-sst-2-english"
-        headers = {"Authorization": f"Bearer {os.environ.get('HUGGINGFACE_API_KEY')}"}
-        payload = {"inputs": query}
-        response = requests.post(API_URL, headers=headers, json=payload)
+        BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+        CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+
+        if not BOT_TOKEN or not CHAT_ID:
+            raise ValueError("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID in environment variables.")
+
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": CHAT_ID,
+            "text": query
+        }
+        response = requests.post(url, json=payload)
         response.raise_for_status()
-        result = response.json()
-        sentiment = result[0][0]['label']
-        score = result[0][0]['score']
-        return f"Sentiment Analysis:\nLabel: {sentiment}\nConfidence: {score:.2f}"
+
+        if response.status_code == 200:
+            return "Message successfully sent to Telegram!"
+        else:
+            return f"Failed to send message. Response: {response.text}"
     except Exception as e:
-        return f"Error performing sentiment analysis: {str(e)}"
+        return f"Error sending Telegram message: {str(e)}"
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-HUGGINGFACE_API_KEY = os.environ.get("HUGGINGFACE_API_KEY")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
 if not OPENAI_API_KEY:
     raise ValueError("No OPENAI_API_KEY in env")
-if not HUGGINGFACE_API_KEY:
-    raise ValueError("No HUGGINGFACE_API_KEY in env")
+if not TELEGRAM_BOT_TOKEN:
+    raise ValueError("No TELEGRAM_BOT_TOKEN in env")
+if not TELEGRAM_CHAT_ID:
+    raise ValueError("No TELEGRAM_CHAT_ID in env")
 
 # Load FAISS index
 vector_store = load_vector_store("./faiss_store", OPENAI_API_KEY)
@@ -75,7 +88,7 @@ vector_store = load_vector_store("./faiss_store", OPENAI_API_KEY)
 # Define the LLM
 llm = OpenAI(openai_api_key=OPENAI_API_KEY, temperature=0)
 
-# Define Tools (including our new sentiment analysis tool)
+# Define Tools (including our new TelegramMessageTool)
 tools = [
     Tool(
         name="DocSearch",
@@ -97,11 +110,11 @@ tools = [
         )
     ),
     Tool(
-        name="SentimentAnalysisTool",
-        func=sentiment_analysis_tool,
+        name="TelegramMessageTool",
+        func=telegram_message_tool,
         description=(
-            "Use this tool to analyze the sentiment of a given text. "
-            "It returns the sentiment label (e.g., positive, negative) and confidence score."
+            "Use this tool to send a message to a Telegram account. "
+            "The input should be the message text you want to send."
         )
     ),
 ]
@@ -115,6 +128,6 @@ agent = initialize_agent(
 
 if __name__ == "__main__":
     # Test
-    q = "Analyze the sentiment of this message: 'I am so happy today!'"
+    q = "Send this message to Telegram: Hello from the AI app!"
     ans = agent.run(q)
     print("Agent says:", ans)
