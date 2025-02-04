@@ -1,9 +1,7 @@
 # ./app/multi_agent_app.py
-
 import os
 import pathlib
 import requests
-
 from langchain.agents import initialize_agent, Tool
 from langchain_openai import OpenAIEmbeddings, OpenAI
 from langchain_community.vectorstores import FAISS
@@ -34,11 +32,9 @@ def external_report_tool(query: str) -> str:
     """
     try:
         # Example external API - JSONPlaceholder
-        # This fetches a dummy to-do item
         resp = requests.get("https://jsonplaceholder.typicode.com/todos/1")
         resp.raise_for_status()
         data = resp.json()
-        # Build a short 'report'
         return (
             f"External Report:\n"
             f"Fetched ID: {data.get('id')}\n"
@@ -48,9 +44,30 @@ def external_report_tool(query: str) -> str:
     except Exception as e:
         return f"Error fetching external report: {str(e)}"
 
+def sentiment_analysis_tool(query: str) -> str:
+    """
+    Perform sentiment analysis on the input text using Hugging Face's API.
+    """
+    try:
+        API_URL = "https://api-inference.huggingface.co/models/distilbert-base-uncased-finetuned-sst-2-english"
+        headers = {"Authorization": f"Bearer {os.environ.get('HUGGINGFACE_API_KEY')}"}
+        payload = {"inputs": query}
+        response = requests.post(API_URL, headers=headers, json=payload)
+        response.raise_for_status()
+        result = response.json()
+        sentiment = result[0][0]['label']
+        score = result[0][0]['score']
+        return f"Sentiment Analysis:\nLabel: {sentiment}\nConfidence: {score:.2f}"
+    except Exception as e:
+        return f"Error performing sentiment analysis: {str(e)}"
+
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+HUGGINGFACE_API_KEY = os.environ.get("HUGGINGFACE_API_KEY")
+
 if not OPENAI_API_KEY:
     raise ValueError("No OPENAI_API_KEY in env")
+if not HUGGINGFACE_API_KEY:
+    raise ValueError("No HUGGINGFACE_API_KEY in env")
 
 # Load FAISS index
 vector_store = load_vector_store("./faiss_store", OPENAI_API_KEY)
@@ -58,7 +75,7 @@ vector_store = load_vector_store("./faiss_store", OPENAI_API_KEY)
 # Define the LLM
 llm = OpenAI(openai_api_key=OPENAI_API_KEY, temperature=0)
 
-# Define Tools (including our new external report tool)
+# Define Tools (including our new sentiment analysis tool)
 tools = [
     Tool(
         name="DocSearch",
@@ -79,6 +96,14 @@ tools = [
             "This tool returns JSON-based data from an external source."
         )
     ),
+    Tool(
+        name="SentimentAnalysisTool",
+        func=sentiment_analysis_tool,
+        description=(
+            "Use this tool to analyze the sentiment of a given text. "
+            "It returns the sentiment label (e.g., positive, negative) and confidence score."
+        )
+    ),
 ]
 
 agent = initialize_agent(
@@ -90,6 +115,6 @@ agent = initialize_agent(
 
 if __name__ == "__main__":
     # Test
-    q = "Give me a new external report about something"
+    q = "Analyze the sentiment of this message: 'I am so happy today!'"
     ans = agent.run(q)
     print("Agent says:", ans)

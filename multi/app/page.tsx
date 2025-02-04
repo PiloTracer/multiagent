@@ -1,6 +1,5 @@
 // ./multi/app/page.tsx
 "use client";
-
 import { useState } from "react";
 
 export default function Home() {
@@ -18,11 +17,9 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query }),
       });
-
       if (!res.ok) {
         throw new Error("Failed to fetch response");
       }
-
       const data = await res.json();
       setResponse(data.answer);
     } catch (err) {
@@ -42,7 +39,7 @@ export default function Home() {
       <input
         type="text"
         className="border p-2 rounded w-96 text-black"
-        placeholder="Ask something about deployments or external reports..."
+        placeholder="Ask something about deployments, external reports, or sentiment analysis..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
