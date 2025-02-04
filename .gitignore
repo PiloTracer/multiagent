@@ -14,6 +14,7 @@ README_fastapi.txt
 readme.websockets.txt
 readme_*.*
 README_*.*
+*.docx
 docker-compose*.*
 Transactional Data Service API Documentation.docx
 websocketkey.key
