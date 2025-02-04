@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+langchain
+openai>=0.27.8
+faiss-cpu
+docx2txt
+langchain-community
+langchain-openai
