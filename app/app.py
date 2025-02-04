@@ -1,10 +1,20 @@
 # ./app/app.py
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from multi_agent_app import agent
 
 app = FastAPI()
+
+# Add CORS middleware to allow any origin, all methods, and all headers.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows any origin
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all HTTP methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 class QueryRequest(BaseModel):
     query: str
