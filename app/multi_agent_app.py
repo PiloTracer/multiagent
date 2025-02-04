@@ -1,6 +1,7 @@
 # ./app/multi_agent_app.py
 import os
 import pathlib
+import re
 import requests
 from langchain.agents import initialize_agent, Tool
 from langchain_openai import OpenAIEmbeddings, OpenAI
@@ -71,6 +72,34 @@ def telegram_message_tool(query: str) -> str:
     except Exception as e:
         return f"Error sending Telegram message: {str(e)}"
 
+def direct_telegram_message_tool(input: str) -> str:
+    """
+    Parses natural language commands in various languages such as:
+    "tell CHAT_ID message text", "dile CHAT_ID message text", etc.
+    Returns the result of sending a Telegram message to the specified CHAT_ID.
+    """
+    pattern = re.compile(r'^(tell|dile|envia a)\s+(\S+)\s+(.+)', re.IGNORECASE)
+    match = pattern.match(input)
+    if match:
+        chat_id = match.group(2)
+        message = match.group(3)
+        return send_telegram_message(chat_id, message)
+    return "Input must be in the format: 'tell CHAT_ID message text' (or similar in your language)."
+
+def send_telegram_message(chat_id: str, message: str):
+    BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": message
+    }
+    response = requests.post(url, json=payload)
+    if response.status_code == 200:
+        return "Message sent successfully!"
+    else:
+        return f"Failed to send message. Response: {response.text}"
+
+
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
@@ -115,6 +144,14 @@ tools = [
         description=(
             "Use this tool to send a message to a Telegram account. "
             "The input should be the message text you want to send."
+        )
+    ),
+    Tool(
+        name="DirectTelegramMessageTool",
+        func=direct_telegram_message_tool,
+        description=(
+            "Send a message to a specific Telegram user using natural language. For example: "
+            "'tell CHAT_ID message text' or 'dile CHAT_ID message text'."
         )
     ),
 ]
