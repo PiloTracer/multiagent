@@ -12,8 +12,11 @@ def load_word_documents(directory: str):
     for fname in os.listdir(directory):
         if fname.endswith('.docx'):
             full_path = os.path.join(directory, fname)
-            doc_text = docx2txt.process(full_path)
-            texts.append(doc_text)
+            try:
+                doc_text = docx2txt.process(full_path)
+                texts.append(doc_text)
+            except Exception as e:
+                print(f"Skipping file {fname}: {e}")
     return texts
 
 def create_vector_store(texts, openai_api_key: str):

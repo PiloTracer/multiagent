@@ -32,7 +32,6 @@ def external_report_tool(query: str) -> str:
     You can adapt this to your real API calls.
     """
     try:
-        # Example external API - JSONPlaceholder
         resp = requests.get("https://jsonplaceholder.typicode.com/todos/1")
         resp.raise_for_status()
         data = resp.json()
@@ -53,10 +52,8 @@ def telegram_message_tool(query: str) -> str:
     try:
         BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
         CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
-
         if not BOT_TOKEN or not CHAT_ID:
             raise ValueError("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID in environment variables.")
-
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
         payload = {
             "chat_id": CHAT_ID,
@@ -64,7 +61,6 @@ def telegram_message_tool(query: str) -> str:
         }
         response = requests.post(url, json=payload)
         response.raise_for_status()
-
         if response.status_code == 200:
             return "Message successfully sent to Telegram!"
         else:
@@ -99,6 +95,32 @@ def send_telegram_message(chat_id: str, message: str):
     else:
         return f"Failed to send message. Response: {response.text}"
 
+def find_chat_id_by_name(name: str) -> str:
+    """
+    Queries Telegram's getUpdates API to find the chat_id for a given name.
+    """
+    try:
+        BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+        if not BOT_TOKEN:
+            raise ValueError("Missing TELEGRAM_BOT_TOKEN in environment variables.")
+        
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates"
+        response = requests.get(url)
+        response.raise_for_status()
+        updates = response.json().get("result", [])
+        
+        for update in updates:
+            message = update.get("message", {})
+            chat = message.get("chat", {})
+            chat_id = chat.get("id")
+            first_name = chat.get("first_name", "").lower()
+            
+            if name.lower() in first_name:
+                return f"I have found the chat ID for {chat.get('first_name')}: {chat_id}"
+        
+        return f"No chat ID found for the name: {name}"
+    except Exception as e:
+        return f"Error finding chat ID: {str(e)}"
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -117,12 +139,16 @@ vector_store = load_vector_store("./faiss_store", OPENAI_API_KEY)
 # Define the LLM
 llm = OpenAI(openai_api_key=OPENAI_API_KEY, temperature=0)
 
-# Define Tools (including our new TelegramMessageTool)
+# Define Tools (including our new FindChatIdByNameTool)
 tools = [
     Tool(
         name="DocSearch",
         func=doc_search_tool,
-        description="Search in custom documents"
+        description=(
+            "Search within the integrated document repository for information relevant to your query. "
+            "Use this tool to locate specific details, facts, and text passages from the provided documents. "
+            "It helps you quickly find content from the document database."
+        )
     ),
     Tool(
         name="GeneralTool",
@@ -154,6 +180,14 @@ tools = [
             "'tell CHAT_ID message text' or 'dile CHAT_ID message text'."
         )
     ),
+    Tool(
+        name="FindChatIdByNameTool",
+        func=find_chat_id_by_name,
+        description=(
+            "Use this tool to find the chat ID of a Telegram user by their name. "
+            "For example: 'Please give me the chat ID for John Doe'."
+        )
+    ),
 ]
 
 agent = initialize_agent(
@@ -165,6 +199,6 @@ agent = initialize_agent(
 
 if __name__ == "__main__":
     # Test
-    q = "Send this message to Telegram: Hello from the AI app!"
+    q = "Please give me the chat ID for john doe"
     ans = agent.run(q)
     print("Agent says:", ans)
